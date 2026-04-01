@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>各国行业碳排放对比 · 交互式堆叠面积图</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.4rem;
+            height: 1.4rem;
+            background: #e2e8f0;
+            border-radius: 50%;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #334155;
+            cursor: help;
+            position: relative;
+        }
+
+        .info-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 150%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: normal;
+            white-space: nowrap;
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.5rem;
+            z-index: 20;
+            white-space: normal;
+            width: max(200px, 30vw);
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .subhead {
+            color: #475569;
+            border-left: 4px solid #3b82f6;
+            padding-left: 1rem;
+            margin: 0.5rem 0 1.5rem 0;
+            font-size: 1rem;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: flex-end;
+            border: 1px solid #e2e8f0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .control-group label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #334155;
+        }
+
+        select, input {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            background: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        select:hover, input:hover {
+            border-color: #94a3b8;
+        }
+
+        .range-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .range-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        button {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.85rem;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .mode-switch {
+            background: #10b981;
+        }
+        .mode-switch:hover {
+            background: #059669;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+
+        .legend-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: #f1f5f9;
+            border-radius: 2rem;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            padding: 0.25rem 0.75rem;
+            border-radius: 2rem;
+            transition: 0.1s;
+            font-size: 0.8rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+        }
+
+        .legend-item:hover {
+            background: #e6f0ff;
+            transform: scale(1.02);
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+            max-width: 250px;
+            line-height: 1.4;
+        }
+
+        svg {
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .axis-label {
+            font-size: 11px;
+            fill: #475569;
+        }
+
+        .documentation {
+            background: #fef9e3;
+            border-left: 4px solid #eab308;
+            padding: 1.2rem 1.5rem;
+            margin-top: 2rem;
+            border-radius: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .documentation h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+        }
+
+        .documentation p, .documentation ul {
+            margin: 0.5rem 0;
+        }
+
+        hr {
+            margin: 1.5rem 0;
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>
+        🌍 行业碳排放演变 · 国际比较
+        <span class="info-icon" data-tooltip="农业、废弃物等排放量较小，在图中几乎不可见，但鼠标悬浮在图表上可查看精确数值。点击「切换至占比视图」可让各行业占比一目了然。">ⓘ</span>
+    </h1>
+    <div class="subhead">探索美国、瑞典、中国、印度、埃塞俄比亚、布隆迪不同行业碳排放的结构与趋势（1990–2018）</div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>🇺🇳 选择国家</label>
+            <select id="countrySelect"></select>
+        </div>
+        <div class="control-group range-group">
+            <div class="range-item">
+                <label>📅 起始年份</label>
+                <input type="range" id="yearStart" min="1990" max="2018" step="1" value="1990">
+                <span id="startYearLabel">1990</span>
+            </div>
+            <div class="range-item">
+                <label>📅 结束年份</label>
+                <input type="range" id="yearEnd" min="1990" max="2018" step="1" value="2018">
+                <span id="endYearLabel">2018</span>
+            </div>
+        </div>
+        <div class="control-group">
+            <label>📊 视图模式</label>
+            <button id="modeSwitchBtn" class="mode-switch">📈 切换至占比视图</button>
+        </div>
+        <div class="control-group">
+            <label>🔄 行业筛选</label>
+            <button id="resetSectorsBtn">重置所有行业</button>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div id="legend" class="legend-area"></div>
+        <svg id="chart" width="1000" height="550" viewBox="0 0 1000 550" style="background: white; border-radius: 12px;"></svg>
+    </div>
+
+    <div class="documentation">
+        <h3>📘 项目说明</h3>
+        <p><strong>研究问题：</strong> 不同发展水平国家（美国、瑞典、中国、印度、埃塞俄比亚、布隆迪）的行业碳排放构成和演变有何差异？发达国家是否实现了“减排”？发展中国家的排放增长主要来自哪些行业？</p>
+        <p><strong>设计决策：</strong> 采用<strong>堆叠面积图</strong>，可同时展示总量和各行业占比的时间变化；<strong>国家选择</strong>让用户聚焦单一国家；<strong>年份范围滑块</strong>支持时间区间探索；<strong>图例点击</strong>可高亮单个行业（再次点击恢复全部）；<strong>工具提示</strong>提供精确数值。新增<strong>绝对量/占比切换</strong>，便于观察小行业的结构变化。替代方案考虑过饼图系列（无法展示时间）和多线图（难以直观对比总量），最终选择堆叠面积图。</p>
+        <p><strong>数据来源：</strong> 世界银行开放数据（指标代码：EN.GHG.CO2.*），涵盖交通、电力、工业过程、工业燃烧、建筑、农业、废弃物七个行业。数据时间跨度1990–2018，单位为百万吨 CO₂当量。</p>
+        <p><strong>开发流程：</strong> 个人完成，总耗时约10小时。数据清洗（多文件合并）耗时最多，D3堆叠图调试及交互逻辑次之。前端采用D3.js v7，所有交互均实时响应。</p>
+        <p><strong>交互说明：</strong> 点击国家下拉菜单切换；拖动年份滑块聚焦时间段；点击图例高亮单个行业（再次点击同一行业恢复全视图）；鼠标悬浮于图表上显示该年份各行业排放数值；点击“切换至占比视图”可观察各行业排放比例变化。</p>
+    </div>
+    <footer>可视化基于世界银行数据 | 作业2 · 交互式数据探索</footer>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+    // 全局变量
+    let fullData = [];
+    let sectors = [];
+    let countries = [];
+    let currentCountry = "United States";
+    let yearRange = { start: 1990, end: 2018 };
+    let selectedSector = null;
+    let viewMode = "absolute";   // "absolute" 或 "percentage"
+
+    const width = 1000, height = 550;
+    const margin = { top: 40, right: 30, bottom: 50, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    let svg, xScale, yScale, colorScale, areaGenerator, stackGenerator;
+
+    // 加载数据
+    d3.csv("emissions_long.csv").then(raw => {
+        // 数据清洗：去除千位分隔符并转换为数字
+        fullData = raw.map(d => ({
+            country: d.country,
+            year: +d.year,
+            sector: d.sector,
+            value: +d.value.replace(/,/g, '').trim()
+        })).filter(d => !isNaN(d.value) && d.value !== null);
+
+        if (fullData.length === 0) {
+            throw new Error("CSV 解析后无有效数据，请检查文件格式，确保数值列不含千位分隔符。");
+        }
+
+        sectors = [...new Set(fullData.map(d => d.sector))].sort();
+        countries = [...new Set(fullData.map(d => d.country))].sort();
+
+        // 初始化下拉菜单
+        const select = d3.select("#countrySelect");
+        select.selectAll("option").data(countries).enter()
+            .append("option")
+            .attr("value", d => d)
+            .text(d => d);
+        select.property("value", currentCountry);
+        select.on("change", function() {
+            currentCountry = this.value;
+            updateChart();
+        });
+
+        // 年份滑块
+        const startSlider = d3.select("#yearStart");
+        const endSlider = d3.select("#yearEnd");
+        const startLabel = d3.select("#startYearLabel");
+        const endLabel = d3.select("#endYearLabel");
+
+        function updateSliderRange() {
+            let s = +startSlider.property("value");
+            let e = +endSlider.property("value");
+            if (s > e) {
+                [s, e] = [e, s];
+                startSlider.property("value", s);
+                endSlider.property("value", e);
+            }
+            yearRange.start = s;
+            yearRange.end = e;
+            startLabel.text(s);
+            endLabel.text(e);
+            updateChart();
+        }
+
+        startSlider.on("input", updateSliderRange);
+        endSlider.on("input", updateSliderRange);
+        updateSliderRange();
+
+        // 模式切换按钮
+        const modeBtn = d3.select("#modeSwitchBtn");
+        modeBtn.on("click", () => {
+            viewMode = viewMode === "absolute" ? "percentage" : "absolute";
+            modeBtn.text(viewMode === "absolute" ? "📈 切换至占比视图" : "📊 切换至绝对量视图");
+            updateChart();
+        });
+
+        // 重置行业按钮
+        d3.select("#resetSectorsBtn").on("click", () => {
+            selectedSector = null;
+            updateChart();
+        });
+
+        // 初始化 SVG
+        svg = d3.select("#chart")
+            .attr("width", width)
+            .attr("height", height)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        colorScale = d3.scaleOrdinal()
+            .domain(sectors)
+            .range(d3.schemeTableau10);
+
+        renderLegend();
+        updateChart();
+    }).catch(err => {
+        console.error("数据加载失败:", err);
+        document.querySelector(".chart-container").innerHTML = `<div style="color:red; padding:1rem;">❌ 数据加载失败：${err.message}<br>请检查 emissions_long.csv 文件是否存在，且数值列不含千位分隔符（如 1,039 → 1039）。</div>`;
+    });
+
+    function renderLegend() {
+        const legendDiv = d3.select("#legend");
+        legendDiv.html("");
+        sectors.forEach(sector => {
+            const item = legendDiv.append("div")
+                .attr("class", "legend-item")
+                .attr("data-sector", sector)
+                .on("click", function() {
+                    const clicked = d3.select(this).attr("data-sector");
+                    if (selectedSector === clicked) {
+                        selectedSector = null;
+                    } else {
+                        selectedSector = clicked;
+                    }
+                    updateChart();
+                });
+
+            item.append("div")
+                .attr("class", "legend-color")
+                .style("background-color", colorScale(sector));
+
+            item.append("span").text(sector);
+        });
+    }
+
+    function updateChart() {
+        if (!svg || !fullData.length) return;
+
+        // 1. 筛选数据
+        let filtered = fullData.filter(d => d.country === currentCountry && d.year >= yearRange.start && d.year <= yearRange.end);
+        if (filtered.length === 0) {
+            svg.selectAll("*").remove();
+            svg.append("text")
+                .attr("x", innerWidth / 2)
+                .attr("y", innerHeight / 2)
+                .attr("text-anchor", "middle")
+                .text("该国家在所选年份范围内无数据")
+                .style("fill", "gray");
+            return;
+        }
+
+        // 2. 转换为宽表（年份×行业）
+        const years = d3.range(yearRange.start, yearRange.end + 1);
+        const nested = d3.rollup(filtered, v => d3.sum(v, d => d.value), d => d.year, d => d.sector);
+        let timeSeries = years.map(y => {
+            const row = { year: y };
+            sectors.forEach(s => {
+                row[s] = nested.get(y)?.get(s) || 0;
+            });
+            return row;
+        }).filter(row => d3.sum(sectors, s => row[s]) > 0);
+
+        if (timeSeries.length === 0) return;
+
+        // 3. 根据视图模式转换数据（绝对量 vs 占比）
+        let dataForStack = timeSeries;
+        let yLabel = "碳排放量 (Mt CO₂e)";
+        let yTickFormat = d3.format(".0f");
+
+        if (viewMode === "percentage") {
+            // 计算每一年各行业的百分比
+            dataForStack = timeSeries.map(row => {
+                const total = d3.sum(sectors, s => row[s]);
+                if (total === 0) return row;
+                const newRow = { year: row.year };
+                sectors.forEach(s => {
+                    newRow[s] = row[s] / total;
+                });
+                return newRow;
+            });
+            yLabel = "行业排放占比 (%)";
+            yTickFormat = d => `${(d * 100).toFixed(0)}%`;
+        }
+
+        // 4. 更新比例尺
+        xScale = d3.scaleLinear()
+            .domain([yearRange.start, yearRange.end])
+            .range([0, innerWidth]);
+
+        let yDomainMax = viewMode === "absolute"
+            ? d3.max(dataForStack, d => d3.sum(sectors, s => d[s])) * 1.05
+            : 1.0;
+        yScale = d3.scaleLinear()
+            .domain([0, yDomainMax])
+            .range([innerHeight, 0]);
+
+        // 5. 堆叠
+        let keys = sectors;
+        if (selectedSector !== null) {
+            keys = [selectedSector];
+        }
+        stackGenerator = d3.stack().keys(keys);
+        const stackedData = stackGenerator(dataForStack);
+
+        areaGenerator = d3.area()
+            .x(d => xScale(d.data.year))
+            .y0(d => yScale(d[0]))
+            .y1(d => yScale(d[1]))
+            .curve(d3.curveMonotoneX);
+
+        // 6. 坐标轴
+        const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d")).ticks(10);
+        const yAxis = d3.axisLeft(yScale).tickFormat(yTickFormat).ticks(6);
+
+        svg.selectAll(".x-axis").remove();
+        svg.selectAll(".y-axis").remove();
+        svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0, ${innerHeight})`)
+            .call(xAxis);
+        svg.append("g")
+            .attr("class", "y-axis")
+            .call(yAxis);
+
+        // 轴标签
+        svg.selectAll(".axis-label").remove();
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("x", innerWidth / 2)
+            .attr("y", innerHeight + 38)
+            .attr("text-anchor", "middle")
+            .text("年份");
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", "rotate(-90)")
+            .attr("x", -innerHeight / 2)
+            .attr("y", -42)
+            .attr("text-anchor", "middle")
+            .text(yLabel);
+
+        // 7. 绘制堆叠区域
+        const layers = svg.selectAll(".layer").data(stackedData, d => d.key);
+        layers.exit().remove();
+
+        const newLayers = layers.enter()
+            .append("path")
+            .attr("class", "layer")
+            .attr("fill", d => colorScale(d.key))
+            .attr("opacity", 0.85)
+            .merge(layers)
+            .attr("d", d => areaGenerator(d))
+            .on("mousemove", function(event) {
+                const [mouseX] = d3.pointer(event);
+                const year = Math.round(xScale.invert(mouseX));
+                const nearest = dataForStack.reduce((prev, curr) => {
+                    return Math.abs(curr.year - year) < Math.abs(prev.year - year) ? curr : prev;
+                });
+                if (!nearest) return;
+                let tooltipHtml = `<strong>${nearest.year}年</strong><br/>`;
+                for (let s of sectors) {
+                    let val = nearest[s];
+                    if (viewMode === "percentage") {
+                        val = val * 100;
+                        tooltipHtml += `${s}: ${val.toFixed(1)}%<br/>`;
+                    } else {
+                        tooltipHtml += `${s}: ${val.toFixed(1)} Mt<br/>`;
+                    }
+                }
+                d3.select("#tooltip").remove();
+                d3.select("body").append("div")
+                    .attr("id", "tooltip")
+                    .attr("class", "tooltip")
+                    .style("left", (event.pageX + 12) + "px")
+                    .style("top", (event.pageY - 28) + "px")
+                    .html(tooltipHtml);
+            })
+            .on("mouseout", () => {
+                d3.select("#tooltip").remove();
+            });
+
+        newLayers.attr("d", d => areaGenerator(d));
+        svg.selectAll(".layer").attr("d", d => areaGenerator(d));
+    }
+</script>
+</body>
+</html>
